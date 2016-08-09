@@ -9,13 +9,48 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Load data and set working directory
 ```{r Exploring Data}
-wd <- setwd("~/Desktop/Dropbox/Work/Data Science Projects/Practical Data Science with R")
-filepath <- paste0(wd, "/01.Data/")
+
+filepath <- "~/Desktop/Dropbox/Work/Data Science Projects/Practical Data Science with R/01.Data/"
 print(filepath)
 
-custdata <- read.table(paste0(filepath, 'custdata.tsv'),header=T,sep='\t')
+custdata <- read.table(paste0(filepath, 'custdata.tsv'),header = T, sep = '\t')
 head(custdata)
 
-summary(cars)
+summary(custdata)
 ```
+# Using visuals to explore the data
+
+## Histograms
+```{r Histograms}
+# histograms
+library(ggplot2)
+ggplot(custdata) + 
+        geom_histogram(aes(x = age),
+                       binwidth = 5,
+                       fill = "gray")
+
+```
+The primary disadvantage of histograms is that you must decide ahead of time how wide the buckets are. If the buckets are too wide, you can lose information about the shape of the distribution. If the buckets are too narrow, the histogram can look too noisy to read easily. 
+An alternative visualization is the density plot.
+
+You can think of a density plot as a “continuous histogram” of a variable, except the area under the density plot is equal to 1. 
+A point on a density plot corresponds to the fraction of data (or the percentage of data, divided by 100) that takes on a particular
+value. This fraction is usually very small. When you look at a density plot, you’re more interested in the overall shape of the curve than in the actual values on the y-axis.
+```{r Density Plots}
+library(scales)
+ggplot(custdata) + 
+        geom_density(aes(x = income)) + 
+                             scale_x_continuous(labels = dollar)
+                     
+# When the data range is very wide and the mass of the distribution is heavily concentrated to one side then its difficult to see the details
+# of the shape
+
+ggplot(custdata) + 
+        geom_density(aes(x = income)) + scale_x_log10(breaks = c(100, 1000, 10000, 100000), labels = dollar) + 
+        annotation_logticks(sides = "bt")
+
+```
+
+
