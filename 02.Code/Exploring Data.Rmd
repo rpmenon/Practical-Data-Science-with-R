@@ -1,0 +1,21 @@
+---
+title: "Exploring Data"
+author: "Pradeep Menon"
+date: "9 August 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Exploring Data}
+wd <- setwd("~/Desktop/Dropbox/Work/Data Science Projects/Practical Data Science with R")
+filepath <- paste0(wd, "/01.Data/")
+print(filepath)
+
+custdata <- read.table(paste0(filepath, 'custdata.tsv'),header=T,sep='\t')
+head(custdata)
+
+summary(cars)
+```
