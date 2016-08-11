@@ -32,12 +32,15 @@ ggplot(custdata) +
                        fill = "gray")
 
 ```
+
+## Density Plots
 The primary disadvantage of histograms is that you must decide ahead of time how wide the buckets are. If the buckets are too wide, you can lose information about the shape of the distribution. If the buckets are too narrow, the histogram can look too noisy to read easily. 
 An alternative visualization is the density plot.
 
 You can think of a density plot as a “continuous histogram” of a variable, except the area under the density plot is equal to 1. 
 A point on a density plot corresponds to the fraction of data (or the percentage of data, divided by 100) that takes on a particular
 value. This fraction is usually very small. When you look at a density plot, you’re more interested in the overall shape of the curve than in the actual values on the y-axis.
+
 ```{r Density Plots}
 library(scales)
 ggplot(custdata) + 
@@ -52,5 +55,140 @@ ggplot(custdata) +
         annotation_logticks(sides = "bt")
 
 ```
+
+## Bar Charts
+A bar chart is a histogram for discrete data: it records the frequency of every value of a categorical variable.
+```{r Bar Charts}
+# bar chart for marital status
+ggplot(custdata) + geom_bar(aes(x = marital.stat), fill = "gray")
+
+# horizontal bar chart
+
+ggplot(custdata) + 
+        geom_bar(aes(x = state.of.res), fill = "gray") + 
+        coord_flip() + 
+        theme(axis.text.y = element_text(size = rel(0.8)))
+
+# reorder to change the y-axis to sort by values
+statesums <- table(custdata$state.of.res) # The table() command aggregates the data by state of residence - exactly the information the bar chart plots.
+statef <- as.data.frame(statesums) 
+colnames(statef) <- c("state.of.res", "count") # change the column names
+summary(statef)
+
+# Use the reorder() function to set the state.of.res variable to be count ordered. Use the transform() function to apply the transformation 
+# to the state.of.res data frame.
+statef <- transform(statef,
+                    state.of.res = reorder(state.of.res, count))
+summary(statef)
+
+ggplot(statef) + geom_bar(aes(x = state.of.res, y = count), stat = "identity", fill = "gray") +
+        coord_flip() + 
+        theme(axis.text.y = element_text(size = rel(0.8)))
+
+```
+
+
+## Line Charts and Scatter Plots
+* Line plots work best when the relationship between two variables is relatively clean
+* When the data is not so cleanly related, line plots aren’t as useful; you’ll want to use the scatter plot instead
+
+```{r Scatter Plots}
+custdata2 <- subset(custdata, (custdata$age > 0 & custdata$age < 100 
+                               & custdata$income > 0))
+
+cor(custdata2$age, custdata2$income)
+
+# Lets try scatter plot
+ggplot(custdata2, aes(x = age, y = income)) + # x is age and y is income 
+        geom_point() + # a scatter plot
+        ylim(0, 200000) + # ylimits range from 0 to 200,000
+        stat_smooth(method = "lm") # create linear fit
+
+# In this case, the linear fit doesn’t really capture the shape of the data. 
+# You can better capture the shape by instead plotting a smoothing curve through the data
+
+
+# Scatter plot with curved smooth        
+ggplot(custdata2, aes(x = age, y = income)) + # x is age and y is income 
+        geom_point() + # a scatter plot
+        ylim(0, 200000) + # ylimits range from 0 to 200,000
+        stat_smooth() # create a smooth fit using loess function
+
+# A scatter plot with a smoothing curve also makes a good visualization of the relationship between a continuous variable and a Boolean.        
+
+# Scatter plot with smoothing
+ggplot(custdata2, aes(x = age, y = as.numeric(health.ins))) + 
+        geom_point(position = position_jitter(height = 0.05, width = 0.05)) + 
+        geom_smooth()
+
+```
+In our health insurance examples, the dataset is small enough that the scatter plots that you’ve created are still legible. 
+If the dataset were a hundred times bigger, there would be so many points that they would begin to plot on top of each other; the scatter
+plot would turn into an illegible smear. In high-volume situations like this, try an aggregated plot, like a hexbin plot.
+
+## Hexbin Plots
+* A hexbin plot is like a two-dimensional histogram. 
+* The data is divided into bins, and the number of data points in each bin is represented by color or shading.
+
+
+```{r Hexbin Plot}
+library(hexbin)
+ggplot(custdata2, aes(x = age, y = income)) + 
+        geom_hex(binwidth = c(5, 10000)) + # Create hexbin with age binned into 5-year increments, income in increments of 10000
+        geom_smooth(color = "white", se = F) + # add smoothing curve and supress standard error
+        ylim(0, 200000)
+
+```
+
+The most straightforward way to visualize this is with a stacked bar chart
+## Stacked Bar Charts and Side-by-side bar charts
+
+```{r Stacked, side-by-side Barcharts}
+ggplot(custdata) + geom_bar(aes(x = marital.stat, fill = health.ins)) # Stacked bar chart, the default
+
+ggplot(custdata) + geom_bar(aes(x = marital.stat,
+                                fill = health.ins), 
+                            position = "dodge") # Side-by-side bar chart
+
+ggplot(custdata) + geom_bar(aes(x = marital.stat,
+                                fill = health.ins), 
+                            position = "fill") # Side-by-side bar chart
+
+# To get a simultaneous sense of both the population in each category and the ratio of insured to uninsured, 
+# you can add what’s called a rug to the filled bar chart. A rug is a series of ticks or points on the x-axis, one tick per datum. 
+# The rug is dense where you have a lot of data, and sparse where you have little data.
+
+ggplot(custdata, aes(x = marital.stat)) + 
+        geom_bar(aes(fill = health.ins), position = "fill") +
+        geom_point(aes(y = -0.05), size = 0.75, alpha = 0.3, # Set the points just under the y-axis, three-quarters of default size, 
+                   #and make them slightly transparent with the alpha parameter.
+                   position = position_jitter(height = 0.01)) # Jitter the points slightly for legibility.
+
+
+# A graph gets cluttered if either of the variables has a large number of categories. 
+# A better alternative is to break the distributions into different graphs, one for each housing type.
+# Faceting can do this in ggplot2
+
+# Side-by-side bar 
+ggplot(custdata2) + 
+        geom_bar(aes(x = housing.type, fill = marital.stat ), position = "dodge") + 
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Charts with facet wraps
+ggplot(custdata2) + geom_bar(aes(x = marital.stat), position = "dodge", fill = "darkgray") + 
+        facet_wrap(~housing.type, scales = "free_y") + 
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+
+
+
+
+
+
+
+
 
 
