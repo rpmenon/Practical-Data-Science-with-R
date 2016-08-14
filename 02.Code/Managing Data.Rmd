@@ -1,0 +1,156 @@
+---
+title: "Managing Data"
+author: "Pradeep Menon"
+date: "11 August 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Cleaning Data
+In this section, we’ll address issues that you discovered during the data exploration/ visualization phase. First you’ll see how to treat missing values. 
+Then we’ll discuss some common data transformations and when they’re appropriate: converting continuous variables to discrete; normalization and rescaling; and logarithmic transformations.
+
+# Set working directory and load data
+```{r Load Data}
+filepath <- "~/Desktop/Dropbox/Work/Data Science Projects/Practical Data Science with R/01.Data/"
+file <- paste0(filepath, "exampleData.rData")
+load(file)
+
+```
+## Treating missing values
+### Missing data
+```{r Missing data}
+summary(custdata[is.na(custdata$housing.type), # for housing type those are NAs
+                 c("recent.move", "num.vehicles") # look only for columns recent.move and num.vehicles
+                 ])
+```
+
+
+### Missing categorical data
+* Create new category where data is missing
+```{r Missing categorical data}
+custdata$is.employed.fix <- ifelse(is.na(custdata$is.employed), # if is.employed is na
+                                   "missing", # assign missing
+                                   ifelse(custdata$is.employed == T,
+                                          "employed",
+                                          "not employed"
+                                          ))
+
+summary(as.factor(custdata$is.employed.fix))
+```
+
+### 2.Missing numerical data
+```{r Missing numerical data}
+meanIncome <- mean(custdata$income, na.rm = T)
+income.fix <- ifelse(is.na(custdata$income), 
+                     meanIncome, 
+                     custdata$income )
+
+# when values are systematically missing
+breaks <- c(0, 10000, 50000, 100000, 250000, 1000000) # Select some income ranges of interest. To use the cut() function, the upperand lower bounds should encompass the full income range of the data.
+
+
+# Cut the data into income ranges. The include.lowest=T argument makes sure that zero income data is included in the lowest income range category. 
+# By default it would be excluded.
+Income.groups <- 
+        cut(custdata$Income, breaks = breaks, include.lowest = T) 
+ 
+summary(Income.groups) 
+
+Income.groups <- as.character(Income.groups)
+Income.groups <- ifelse(is.na(Income.groups), "no income", Income.groups)
+summary(as.factor(Income.groups))
+
+```
+
+## Data Transformations
+### 1.Converting continous variables to discrete
+The purpose of data transformation is to make data easier to model—and easier to understand.
+```{r Converting continous variables to discrete}
+str(medianincome)
+str(custdata)
+summary(medianincome)
+# Merge median income information into the custdata data frame by matching the column custdata$state.of.res to the column medianincome$State.
+custdata <- merge(custdata, medianincome,
+                  by.x = "state.of.res", by.y = "State") 
+custdata$Median.Income.y <- NULL
+names(custdata)[names(custdata) == "Median.Income.x"] <- "Median.Income"
+str(custdata)
+summary(custdata[, c("state.of.res", "income", "Median.Income")]) # Median.Income is now part of custdata
+
+custdata$income.norm <- with(custdata, income/Median.Income) #Normalize income by Median.Income
+
+summary(custdata$income.norm)
+
+```
+
+### 2.Normalization and Rescaling
+Normalization is useful when absolute quantities are less meaningful than relative ones.
+```{r Normalization and Rescaling}
+summary(custdata$age)
+meanage <- mean(custdata$age)
+custdata$age.normalized <- custdata$age/meanage
+summary(custdata$age.normalized)
+
+#The typical age spread of your customers is summarized in the standard deviation. 
+#You can rescale your data by using the standard deviation as a unit of distance.
+stdage <- sd(custdata$age)
+stdage
+
+custdata$age.normalized <- (custdata$age - meanage)/stdage
+
+# Use the mean value as the origin (or reference point) and rescale the distance from the mean by the standard deviation.
+
+summary(custdata$age.normalized)
+
+```
+Normalizing by mean and standard deviation is most meaningful when the data distribution is roughly symmetric.
+
+### 3.Log transformations for skewed and wide distributions
+It’s also generally a good idea to log transform data with values that range over several orders of magnitude—first, because modeling techniques often have a difficult time with very wide data ranges; and second, because such data often comes from multiplicative processes, so log units are in some sense more natural.
+
+
+# Sampling for Modeling and Validation
+Sampling is the process of selecting a subset of a population to represent the whole, during analysis and modeling.
+
+## Training and Testing Splits
+While building a model to make predictions, one needs data to test whether the model makes correct predictions on new data. The first
+set is called the training set, and the second set is called the test (or hold-out) set.
+
+## Grouping samples
+A convenient way to manage random sampling is to add a sample group column to the data frame. The sample group column contains a number generated uniformly from zero to one, using the runif function. You can draw a random sample of arbitrary size from the data frame by using the appropriate threshold on the sample group column.
+
+```{r Creating training and testing sets}
+custdata$gp <- runif(dim(custdata)[1])
+testSet <- subset(custdata, custdata$gp <= 0.1) # set where random number is less than or equal to 0.1
+trainingSet <- subset(custdata, custdata$gp > 0.1) # set where random number is greater than 0.1
+head(testSet)
+
+head(trainingSet)
+```
+## Splitting based on record grouping
+One caveat is that the preceding trick works if every object of interest (every customer, in this case) corresponds to a unique row.
+But what if you’re interested less in which customers don’t have health insurance, and more about which households have uninsured members? 
+If you’re modeling a question at the household level rather than the customer level, then every member of a household should be in the same group (test or training).
+
+```{r Record grouping}
+
+hh <- unique(hhdata$household_id) #Get all unique household IDs from your data frame.
+households <- data.frame(household_id = hh, gp = runif(length(hh)))  # Create a temporary data frame of household IDs and a uniformly random number from 0 to 1.
+hhdata <- merge(hhdata, households, by  = "household_id")
+
+head(hhdata)
+
+```
+
+
+
+
+
+
+
+
+
+
